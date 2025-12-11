@@ -1,1 +1,7 @@
 lsh
+lsh.exe
+*.o
+*.obj
+build/
+*.exe
+.vscode/
