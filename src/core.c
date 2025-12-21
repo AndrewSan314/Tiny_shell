@@ -27,16 +27,31 @@ char *msh_read_line(void) {
      * Lưu ý: Xử lý buffer overflow nếu input quá dài!
      */
     
-    char *buffer = malloc(MSH_RL_BUFSIZE);
+    int buff_size = MSH_RL_BUFSIZE;
+    char *buffer = malloc(sizeof(char) * buff_size);
+    int position = 0;
+    int character;
+
     if (!buffer) {
         fprintf(stderr, "Memory error\n");
         exit(EXIT_FAILURE);
     }
-    
-    /* TODO: Implement reading logic */
-    buffer[0] = '\0';
-    
-    return buffer;
+    while(1) {
+        character = getchar(); // Đọc input từ người dùng
+        if(character == EOF || character == '\n') {
+            buffer[position] = '\0';
+            return buffer;
+        }
+        buffer[position] = character;
+        position += 1;
+
+        // Xử lý buffer overflow
+        if(position >= buff_size - 1) {
+            buff_size += MSH_RL_BUFSIZE;
+            buffer = realloc(buffer, buff_size);
+            if (!buffer) { fprintf(stderr, "Memory error\n"); exit(EXIT_FAILURE); }
+        }
+    }
 }
 
 char **msh_split_line(char *line) {
@@ -53,15 +68,32 @@ char **msh_split_line(char *line) {
      * - Xử lý trường hợp có nhiều token hơn buffer size
      */
     
-    char **tokens = malloc(MSH_TOK_BUFSIZE * sizeof(char *));
+    int buff_size = MSH_TOK_BUFSIZE;
+    char **tokens = malloc(buff_size * sizeof(char *));
+    char *token;
+    int position = 0;
+
     if (!tokens) {
         fprintf(stderr, "Memory error\n");
         exit(EXIT_FAILURE);
     }
-    
-    /* TODO: Implement tokenizing logic */
-    tokens[0] = NULL;
-    
+
+    token = strtok(line, MSH_TOK_DELIM);
+
+    while(token != NULL) {
+        tokens[position] = token;
+        position += 1;
+
+        if(position >= buff_size) {
+            buff_size += MSH_TOK_BUFSIZE;
+            tokens = realloc(tokens, buff_size * sizeof(char *));
+            if (!tokens) { fprintf(stderr, "Memory error\n"); exit(EXIT_FAILURE); }
+        }
+
+        token = strtok(NULL, MSH_TOK_DELIM);
+    }
+
+    tokens[position] = NULL;
     return tokens;
 }
 
@@ -85,10 +117,12 @@ int msh_execute(char **args) {
     if (args[0] == NULL) {
         return MSH_CONTINUE;
     }
-    
-    /* TODO: Check builtins và launch external */
-    
-    return MSH_CONTINUE;
+    for(int i = 0; i < msh_num_builtins(); i++) {
+        if(_stricmp(args[0], builtin_str[i]) == 0) {
+            return (*builtin_func[i])(args);
+        }
+    }
+    return msh_launch(args);
 }
 
 /*============================================================
@@ -112,17 +146,19 @@ void msh_loop(void) {
     char *line;
     char **args;
     int status;
-    
+
     do {
         /* TODO: Implement shell loop */
+        cleanup_zombies();
         printf("msh> ");
-        
+        fflush(stdout);
+
         line = msh_read_line();
         args = msh_split_line(line);
         status = msh_execute(args);
-        
+
         free(line);
         free(args);
-        
+
     } while (status);
 }
