@@ -24,6 +24,10 @@ void init_process_manager(void) {
      * - Set tất cả bg_procs[i].is_active = 0
      * - Set hForegroundProcess = NULL
      */
+     for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        bg_procs[i].is_active = 0; 
+     }
+     hForegroundProcess = NULL;
 }
 
 /*============================================================
@@ -42,6 +46,18 @@ void add_bg_process(DWORD pid, HANDLE hProc, HANDLE hThread, const char *cmd) {
      * 
      * Hint: Dùng strncpy() để copy cmd an toàn
      */
+     for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active == 0){ 
+            bg_procs[i].pid = pid;
+            bg_procs[i].hProcess = hProc;
+            bg_procs[i].hThread = hThread;
+            strncpy(bg_procs[i].cmd, cmd, MAX_CMD_LEN);
+            bg_procs[i].is_active = 1;
+            bg_procs[i].is_suspended = 0;
+            return;
+        }
+     }
+     printf("Process list full!\n");
 }
 
 void cleanup_zombies(void) {
@@ -55,6 +71,16 @@ void cleanup_zombies(void) {
      *    - CloseHandle(hProcess) và CloseHandle(hThread)
      *    - Set is_active = 0
      */
+     DWORD exitCode;
+     for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active == 1){ 
+            if(GetExitCodeProcess(bg_procs[i].hProcess, &exitCode) && exitCode != STILL_ACTIVE){ 
+                CloseHandle(bg_procs[i].hProcess); 
+                CloseHandle(bg_procs[i].hThread); 
+                bg_procs[i].is_active = 0;
+            }
+        }
+     }
 }
 
 /*============================================================
@@ -75,6 +101,17 @@ BOOL WINAPI CtrlHandler(DWORD fdwCtrlType) {
      *    - In thông báo không có process foreground
      * 4. Return TRUE để chặn việc thoát shell
      */
+     if(fdwCtrlType != CTRL_C_EVENT) {
+         return FALSE; // Không xử lý các event khác
+     }
+     
+     if(hForegroundProcess != NULL){ 
+        TerminateProcess(hForegroundProcess, 1);
+        hForegroundProcess = NULL;
+        printf("Process terminated.\n");
+        return TRUE;
+     }
+     printf("No foreground process.\n");
     
     return FALSE; /* TODO: Sửa return value */
 }
@@ -100,6 +137,18 @@ int msh_list(char **args) {
      * - Dùng printf("%-10lu %-10s %.20s\n", ...) để format
      * - is_suspended ? "Stopped" : "Running"
      */
+     cleanup_zombies();
+     int cnt = 0;
+     printf("%-10s %-10s %-20s\n", "PID", "Status", "Command");
+     for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active){ 
+            printf("%-10lu %-10s %.20s\n", bg_procs[i].pid, bg_procs[i].is_suspended ? "Stopped" : "Running", bg_procs[i].cmd);
+            cnt++;
+        }
+     }
+     if(cnt == 0){ 
+        printf("No background processes found.\n");
+     }
     
     return MSH_CONTINUE;
 }
@@ -117,9 +166,22 @@ int msh_kill(char **args) {
      * 4. Gọi TerminateProcess()
      * 5. In thông báo success hoặc not found
      */
-    
     (void)args;
-    return MSH_CONTINUE;
+    if(args[1] == NULL){
+        printf("usage: kill <pid>\n");
+        return 1; 
+    }
+    DWORD pid = (DWORD)atoi(args[1]); 
+    for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active && bg_procs[i].pid == pid){ 
+            TerminateProcess(bg_procs[i].hProcess, 1);
+            bg_procs[i].is_active = 0;
+            printf("Process %lu terminated.\n", pid);
+            return 0;
+        }
+    }
+    printf("Process %lu not found.\n", pid);
+    return 1;
 }
 
 int msh_stop(char **args) {
@@ -133,7 +195,21 @@ int msh_stop(char **args) {
      */
     
     (void)args;
-    return MSH_CONTINUE;
+    if(args[1] == NULL){
+        printf("Usage: stop <pid>\n");
+        return 1; 
+    }
+    DWORD pid = (DWORD)atoi(args[1]); 
+    for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active && bg_procs[i].pid == pid){ 
+            SuspendThread(bg_procs[i].hThread);
+            bg_procs[i].is_suspended = 1;   
+            printf("Process %lu stopped.\n", pid);
+            return 0;
+        }
+    }
+    printf("Process %lu not found.\n", pid);
+    return 1;
 }
 
 int msh_resume(char **args) {
@@ -147,5 +223,19 @@ int msh_resume(char **args) {
      */
     
     (void)args;
-    return MSH_CONTINUE;
+    if(args[1] == NULL){
+        printf("Usage: resume <pid>\n");
+        return 1; 
+    }
+    DWORD pid = (DWORD)atoi(args[1]); 
+    for(int i = 0; i < MAX_BG_PROCS; i++){ 
+        if(bg_procs[i].is_active && bg_procs[i].pid == pid){ 
+            ResumeThread(bg_procs[i].hThread);
+            bg_procs[i].is_suspended = 0;   
+            printf("Process %lu resumed.\n", pid);
+            return 0;
+        }
+    }
+    printf("Process %lu not found.\n", pid);
+    return 1;
 }

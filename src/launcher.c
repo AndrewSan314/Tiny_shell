@@ -15,7 +15,7 @@
 #define MSH_CONTINUE 1
 #define MSH_EXIT 0
 
-extern void add_bg_process(DWORD pid);
+/* add_bg_process is declared in process_manager.h */
 extern HANDLE hForegroundProcess;
 
 int is_batch_file(const char *filename) {
@@ -127,9 +127,8 @@ int msh_launch(char **args) {
 
     if(background) {
         printf("[Started process %lu]\n", pi.dwProcessId);
-        add_bg_process(pi.dwProcessId);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
+        add_bg_process(pi.dwProcessId, pi.hProcess, pi.hThread, command);
+        /* Don't close handles - process_manager will manage them */
     } else {
         hForegroundProcess = pi.hProcess;
         while(hForegroundProcess != NULL) {
@@ -154,7 +153,7 @@ void print_win_error(const char *prefix) {
     }
 
     LPSTR messageBuffer = NULL;
-    size_t size = FormatMessageA(
+    FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPSTR)&messageBuffer, 0, NULL);
