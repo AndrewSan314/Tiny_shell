@@ -27,29 +27,39 @@ char *msh_read_line(void) {
      * Lưu ý: Xử lý buffer overflow nếu input quá dài!
      */
     
-    int buff_size = MSH_RL_BUFSIZE;
-    char *buffer = malloc(sizeof(char) * buff_size);
-    int position = 0;
-    int character;
+    size_t bufsize = MSH_RL_BUFSIZE;
+    size_t position = 0;
+    int c;
 
+    char *buffer = malloc(bufsize);
     if (!buffer) {
         fprintf(stderr, "Memory error\n");
         exit(EXIT_FAILURE);
     }
-    while(1) {
-        character = getchar(); // Đọc input từ người dùng
-        if(character == EOF || character == '\n') {
+
+    /* Đọc ký tự từng cái để tránh đóng nhanh rồi thoát */
+    while (1) {
+        c = getchar();
+
+        if (c == EOF || c == '\n') {
             buffer[position] = '\0';
             return buffer;
+        } else {
+            buffer[position] = (char)c;
         }
-        buffer[position] = character;
-        position += 1;
 
-        // Xử lý buffer overflow
-        if(position >= buff_size - 1) {
-            buff_size += MSH_RL_BUFSIZE;
-            buffer = realloc(buffer, buff_size);
-            if (!buffer) { fprintf(stderr, "Memory error\n"); exit(EXIT_FAILURE); }
+        position++;
+
+        /* Mở rộng buffer nếu cần */
+        if (position >= bufsize) {
+            bufsize += MSH_RL_BUFSIZE;
+            char *newbuf = realloc(buffer, bufsize);
+            if (!newbuf) {
+                free(buffer);
+                fprintf(stderr, "Memory error\n");
+                exit(EXIT_FAILURE);
+            }
+            buffer = newbuf;
         }
     }
 }
@@ -68,10 +78,10 @@ char **msh_split_line(char *line) {
      * - Xử lý trường hợp có nhiều token hơn buffer size
      */
     
-    int buff_size = MSH_TOK_BUFSIZE;
-    char **tokens = malloc(buff_size * sizeof(char *));
-    char *token;
+    int bufsize = MSH_TOK_BUFSIZE;
     int position = 0;
+    char **tokens = malloc(bufsize * sizeof(char *));
+    char *token;
 
     if (!tokens) {
         fprintf(stderr, "Memory error\n");
@@ -79,15 +89,18 @@ char **msh_split_line(char *line) {
     }
 
     token = strtok(line, MSH_TOK_DELIM);
+    while (token != NULL) {
+        tokens[position++] = token;
 
-    while(token != NULL) {
-        tokens[position] = token;
-        position += 1;
-
-        if(position >= buff_size) {
-            buff_size += MSH_TOK_BUFSIZE;
-            tokens = realloc(tokens, buff_size * sizeof(char *));
-            if (!tokens) { fprintf(stderr, "Memory error\n"); exit(EXIT_FAILURE); }
+        if (position >= bufsize) {
+            bufsize += MSH_TOK_BUFSIZE;
+            char **new_tokens = realloc(tokens, bufsize * sizeof(char *));
+            if (!new_tokens) {
+                free(tokens);
+                fprintf(stderr, "Memory error\n");
+                exit(EXIT_FAILURE);
+            }
+            tokens = new_tokens;
         }
 
         token = strtok(NULL, MSH_TOK_DELIM);
@@ -117,11 +130,13 @@ int msh_execute(char **args) {
     if (args[0] == NULL) {
         return MSH_CONTINUE;
     }
-    for(int i = 0; i < msh_num_builtins(); i++) {
-        if(_stricmp(args[0], builtin_str[i]) == 0) {
+
+    for (int i = 0; i < msh_num_builtins(); i++) {
+        if (_stricmp(args[0], builtin_str[i]) == 0) {
             return (*builtin_func[i])(args);
         }
     }
+
     return msh_launch(args);
 }
 
@@ -148,17 +163,16 @@ void msh_loop(void) {
     int status;
 
     do {
-        /* TODO: Implement shell loop */
         cleanup_zombies();
-        printf("msh> ");
-        fflush(stdout);
 
+        printf("msh> ");
+        
         line = msh_read_line();
         args = msh_split_line(line);
         status = msh_execute(args);
-
+        
         free(line);
         free(args);
-
+        
     } while (status);
 }
