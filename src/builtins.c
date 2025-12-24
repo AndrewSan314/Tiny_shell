@@ -88,20 +88,26 @@ int msh_help(char **args) {
   (void)args;
   printf("\n");
   printf("================== MSH - Tiny Shell ==================\n");
-  printf("  cd <dir>                           Change directory\n");
-  printf("  pwd                                Print working directory\n");
-  printf("  dir [path]                         List directory contents\n");
-  printf("  list                               List background processes\n");
-  printf("  kill <pid>                         Terminate a process\n");
-  printf("  stop <pid>                         Suspend a process\n");
-  printf("  resume <pid>                       Resume a process\n");
-  printf("  path                               Show PATH variable\n");
   printf("  addpath <dir1 dir2 dir3...dirn>    Add to PATH\n");
-  printf("  datetime                           Show date and time\n");
+  printf("  cd <dir>                           Change directory\n");
   printf("  cls                                Clear screen\n");
+  printf("  datetime                           Show date and time\n");
+  printf(
+      "  diff <file1> <file2>               Show difference between files\n");
+  printf("  dir [path]                         List directory contents\n");
+  printf("  exit                               Exit shell\n");
+  printf("  grep <pattern> <file>              Search pattern in file\n");
+  printf("  help                               Show this help message\n");
+  printf("  kill <pid>                         Terminate a process\n");
+  printf("  list                               List background processes\n");
+  printf("  path                               Show PATH variable\n");
+  printf("  pwd                                Print working directory\n");
+  printf("  resume <pid>                       Resume a process\n");
+  printf("  search <filename>                  Search file\n");
+  printf("  stop <pid>                         Suspend a process\n");
+  printf("  systeminfo                         Show system information\n");
   printf("  <cmd> &                            Run in background\n");
   printf("  Ctrl+C                             Kill foreground process\n");
-  printf("  exit                               Exit shell\n");
   printf("======================================================\n");
   return MSH_CONTINUE;
 }
