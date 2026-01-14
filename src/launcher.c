@@ -118,8 +118,12 @@ int msh_launch(char **args) {
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
+    // Background: CREATE_NEW_CONSOLE để process có cửa sổ riêng
+    // Foreground: CREATE_NEW_PROCESS_GROUP để Ctrl+C không kill shell
+    DWORD creationFlags = background ? CREATE_NEW_CONSOLE : CREATE_NEW_PROCESS_GROUP;
+
     if(!CreateProcess(NULL, command, NULL, NULL, FALSE,
-                      CREATE_NEW_PROCESS_GROUP,
+                      creationFlags,
                       NULL, NULL, &si, &pi)) {
         printf("Failed to create process\n");
         return MSH_CONTINUE;
