@@ -1,39 +1,32 @@
-/*
- * main.c - Entry Point for MSH Shell
- * 
- * Đây là file chính để khởi động shell.
- * Chỉ chứa hàm main() và các bước khởi tạo.
- */
-
 #include "core.h"
 #include "process_manager.h"
-
-/*============================================================
- * MAIN FUNCTION
- *============================================================*/
+#include "colors.h"
+#include "history.h"
+#include "alias.h"
+#include "config.h"
+#include "hacker.h"
 
 int main(int argc, char **argv) {
-    /* Suppress unused parameter warnings */
     (void)argc;
     (void)argv;
     
-    /* 1. Đăng ký Ctrl+C Handler */
+    /* Initialize all subsystems */
+    colors_init();
+    history_init();
+    alias_init();
+    
     if (!SetConsoleCtrlHandler(CtrlHandler, TRUE)) {
-        fprintf(stderr, "Warning: Could not set control handler\n");
+        print_warning("Could not set control handler");
     }
     
-    /* 2. Khởi tạo Process Manager */
     init_process_manager();
     
-    /* 3. Hiển thị welcome message */
-    printf("\n");
-    printf("==========================================\n");
-    printf("  MSH - Tiny Shell for Windows\n");
-    printf("  Type 'help' for available commands\n");
-    printf("==========================================\n");
-    printf("\n");
+    /* Load user configuration (.mshrc) */
+    config_load();
     
-    /* 4. Chạy shell loop */
+    /* HOLLYWOOD HACKER BOOT SEQUENCE */
+    hacker_boot_sequence();
+    
     msh_loop();
     
     return EXIT_SUCCESS;

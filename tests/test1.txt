@@ -1,0 +1,8 @@
+# Test file 1 for grep and diff testing
+This is a sample text file for testing.
+Error: Something went wrong on line 3.
+Warning: This is a warning message.
+Success: Operation completed.
+Error: Another error on line 6.
+This line has no special keywords.
+DEBUG: Testing debug output.

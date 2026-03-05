@@ -1,32 +1,14 @@
-/*
- * launcher.c - External Process Launcher Module Implementation
- * Person 4: Chạy chương trình ngoài (foreground/background)
- * 
- * ⚠️ FILE NÀY CẦN ĐƯỢC IMPLEMENT BỞI PERSON 4
- */
-
 #include "launcher.h"
 #include "process_manager.h"
+#include "colors.h"
 #include <string.h>
-/*============================================================
- * HELPER FUNCTIONS
- *============================================================*/
 
 #define MSH_CONTINUE 1
 #define MSH_EXIT 0
 
-/* add_bg_process is declared in process_manager.h */
 extern HANDLE hForegroundProcess;
 
 int is_batch_file(const char *filename) {
-    /*
-     * TODO: Kiểm tra xem file có phải là batch file (.bat, .cmd) không
-     * 
-     * Return: 1 nếu là batch file, 0 nếu không
-     * 
-     * Hint: Kiểm tra extension bằng _stricmp()
-     */
-    
     if(filename == NULL) {
         return 0;
     }
@@ -40,47 +22,7 @@ int is_batch_file(const char *filename) {
     return 0;
 }
 
-/*============================================================
- * MAIN LAUNCH FUNCTION
- *============================================================*/
-
 int msh_launch(char **args) {
-    /*
-     * TODO: Chạy một chương trình bên ngoài
-     * 
-     * Các bước chính:
-     * 
-     * 1. KIỂM TRA BACKGROUND MODE
-     *    - Đếm số argument
-     *    - Nếu argument cuối là "&", đây là background mode
-     *    - Xóa "&" khỏi danh sách argument
-     * 
-     * 2. XÂY DỰNG COMMAND STRING
-     *    - Nếu là batch file (.bat), thêm "cmd /c " vào đầu
-     *    - Nối tất cả args thành một chuỗi
-     * 
-     * 3. TẠO PROCESS
-     *    - Khởi tạo STARTUPINFO và PROCESS_INFORMATION
-     *    - Gọi CreateProcess() với flag CREATE_NEW_PROCESS_GROUP
-     *      (flag này giúp Ctrl+C không gửi trực tiếp đến child)
-     * 
-     * 4. XỬ LÝ THEO MODE
-     *    
-     *    Nếu BACKGROUND:
-     *    - In "[Started process PID]"
-     *    - Gọi add_bg_process() để lưu vào danh sách
-     *    
-     *    Nếu FOREGROUND:
-     *    - Set hForegroundProcess = pi.hProcess
-     *    - Đợi process kết thúc bằng polling loop:
-     *      while (hForegroundProcess != NULL) {
-     *          WaitForSingleObject(pi.hProcess, 100);
-     *          if (process ended) break;
-     *      }
-     *    - Set hForegroundProcess = NULL
-     *    - CloseHandle() cho hProcess và hThread
-     */
-    
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     char command[MAX_CMD_LEN] = {0};
@@ -118,21 +60,22 @@ int msh_launch(char **args) {
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    // Background: CREATE_NEW_CONSOLE để process có cửa sổ riêng
-    // Foreground: CREATE_NEW_PROCESS_GROUP để Ctrl+C không kill shell
-    DWORD creationFlags = background ? CREATE_NEW_CONSOLE : CREATE_NEW_PROCESS_GROUP;
+    DWORD creationFlags = background ? 0 : CREATE_NEW_PROCESS_GROUP;
 
     if(!CreateProcess(NULL, command, NULL, NULL, FALSE,
                       creationFlags,
                       NULL, NULL, &si, &pi)) {
-        printf("Failed to create process\n");
+        char msg[MAX_CMD_LEN + 64];
+        sprintf(msg, "Command not found: %s", args[0]);
+        print_error(msg);
         return MSH_CONTINUE;
     }
 
     if(background) {
-        printf("[Started process %lu]\n", pi.dwProcessId);
+        char msg[128];
+        sprintf(msg, "Started background process [PID %lu]", pi.dwProcessId);
+        print_info(msg);
         add_bg_process(pi.dwProcessId, pi.hProcess, pi.hThread, command);
-        /* Don't close handles - process_manager will manage them */
     } else {
         hForegroundProcess = pi.hProcess;
         while(hForegroundProcess != NULL) {
@@ -162,9 +105,9 @@ void print_win_error(const char *prefix) {
         NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPSTR)&messageBuffer, 0, NULL);
 
+    set_color(CLR_ERROR);
     fprintf(stderr, "%s: %s\n", prefix, messageBuffer);
+    reset_color();
 
     LocalFree(messageBuffer);
 }
-
-

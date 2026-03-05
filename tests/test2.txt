@@ -1,0 +1,8 @@
+# Test file 2 for diff testing
+This is a sample text file for testing.
+Error: Something went wrong on line 3.
+Warning: This is a MODIFIED warning message.
+Success: Operation completed.
+This line has no special keywords.
+DEBUG: Testing debug output.
+Extra line in file 2.

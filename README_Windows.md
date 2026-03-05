@@ -1,13 +1,13 @@
-# LSH - Simple Shell
+# LSH - Modern Shell Demo Edition
 
 A simple shell implementation converted to work with Windows Win32 API.
 
 ## Features
 
-- **Built-in commands**: `cd`, `pwd`, `help`, `exit`
-- **External command execution**: Run any Windows program
-- **Cross-platform compatibility**: Works on Windows with Win32 API
-- **Memory management**: Proper allocation and cleanup
+- **Cinematic startup**: hacker-style boot sequence and animated prompt
+- **Built-in toolkit**: process control, file utilities, history, aliases, env
+- **`demo` command**: one-shot scripted showcase for a clean 2-minute video
+- **External command execution**: run Windows programs directly
 
 ## Building
 
@@ -31,7 +31,7 @@ gcc -Wall -Wextra -std=c99 -D_CRT_SECURE_NO_WARNINGS -DWIN32_LEAN_AND_MEAN src/m
 ## Usage
 
 ```cmd
-lsh.exe
+msh.exe
 ```
 
 ### Available Commands
@@ -40,6 +40,7 @@ lsh.exe
 - `cd <directory>` - Change directory
 - `pwd` - Print working directory  
 - `help` - Show available commands
+- `demo` - Run the cinematic showcase flow
 - `exit` - Exit the shell
 
 #### Windows System Commands
@@ -49,6 +50,19 @@ lsh.exe
 - `cls` - Clear screen
 - `notepad <file>` - Open file in Notepad
 - And any other Windows executable
+
+### 2-Minute Demo Flow
+
+```cmd
+msh.exe
+demo epic
+```
+
+After the scripted flow ends, run 2-3 freestyle commands (for example: `alias`, `history`, `search *.c src`) and finish with:
+
+```cmd
+exit
+```
 
 ### Example Usage
 

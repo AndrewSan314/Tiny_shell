@@ -1,90 +1,29 @@
-/*
- * core.c - Core Shell Module Implementation
- * Person 1: Vòng lặp chính và parser
- * 
- * ⚠️ FILE NÀY CẦN ĐƯỢC IMPLEMENT BỞI PERSON 1
- */
-
 #include "core.h"
 #include "builtins.h"
 #include "launcher.h"
 #include "process_manager.h"
-
-/*============================================================
- * INPUT FUNCTIONS
- *============================================================*/
+#include "colors.h"
+#include "history.h"
+#include "readline.h"
+#include "alias.h"
+#include "pipe_redirect.h"
+#include "utils.h"
+#include "config.h"
+#include "hacker.h"
+#include <string.h>
 
 char *msh_read_line(void) {
-    /*
-     * TODO: Đọc một dòng input từ người dùng
-     * 
-     * Steps:
-     * 1. Cấp phát buffer với malloc()
-     * 2. Đọc từng ký tự bằng getchar() cho đến khi gặp '\n' hoặc EOF
-     * 3. Thêm '\0' vào cuối
-     * 4. Return buffer (caller sẽ free)
-     * 
-     * Lưu ý: Xử lý buffer overflow nếu input quá dài!
-     */
-    
-    size_t bufsize = MSH_RL_BUFSIZE;
-    size_t position = 0;
-    int c;
-
-    char *buffer = malloc(bufsize);
-    if (!buffer) {
-        fprintf(stderr, "Memory error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    /* Đọc ký tự từng cái để tránh đóng nhanh rồi thoát */
-    while (1) {
-        c = getchar();
-
-        if (c == EOF || c == '\n') {
-            buffer[position] = '\0';
-            return buffer;
-        } else {
-            buffer[position] = (char)c;
-        }
-
-        position++;
-
-        /* Mở rộng buffer nếu cần */
-        if (position >= bufsize) {
-            bufsize += MSH_RL_BUFSIZE;
-            char *newbuf = realloc(buffer, bufsize);
-            if (!newbuf) {
-                free(buffer);
-                fprintf(stderr, "Memory error\n");
-                exit(EXIT_FAILURE);
-            }
-            buffer = newbuf;
-        }
-    }
+    return msh_readline();
 }
 
 char **msh_split_line(char *line) {
-    /*
-     * TODO: Tách chuỗi thành mảng các token
-     * 
-     * Input: "ls -l /home"
-     * Output: ["ls", "-l", "/home", NULL]
-     * 
-     * Hint: Dùng strtok(line, MSH_TOK_DELIM)
-     * 
-     * Lưu ý: 
-     * - Mảng phải kết thúc bằng NULL
-     * - Xử lý trường hợp có nhiều token hơn buffer size
-     */
-    
     int bufsize = MSH_TOK_BUFSIZE;
     int position = 0;
     char **tokens = malloc(bufsize * sizeof(char *));
     char *token;
 
     if (!tokens) {
-        fprintf(stderr, "Memory error\n");
+        print_error("Memory allocation failed");
         exit(EXIT_FAILURE);
     }
 
@@ -97,7 +36,7 @@ char **msh_split_line(char *line) {
             char **new_tokens = realloc(tokens, bufsize * sizeof(char *));
             if (!new_tokens) {
                 free(tokens);
-                fprintf(stderr, "Memory error\n");
+                print_error("Memory allocation failed");
                 exit(EXIT_FAILURE);
             }
             tokens = new_tokens;
@@ -110,27 +49,71 @@ char **msh_split_line(char *line) {
     return tokens;
 }
 
-/*============================================================
- * EXECUTION FUNCTIONS
- *============================================================*/
+/* Expand !! and !n history shortcuts */
+static char *expand_history_cmd(char *line) {
+    if (line[0] != '!') return line;
+
+    const char *expanded = NULL;
+
+    if (strcmp(line, "!!") == 0) {
+        int count = history_count();
+        if (count > 0) {
+            expanded = history_get(count - 1);
+        }
+    } else if (line[0] == '!' && line[1] >= '0' && line[1] <= '9') {
+        int n = atoi(line + 1);
+        int count = history_count();
+        if (n > 0 && n <= count) {
+            expanded = history_get(n - 1);
+        }
+    }
+
+    if (expanded) {
+        char *newLine = malloc(strlen(expanded) + 1);
+        if (newLine) {
+            strcpy(newLine, expanded);
+            set_color(CLR_MUTED);
+            printf("  -> %s\n", newLine);
+            reset_color();
+            free(line);
+            return newLine;
+        }
+    }
+
+    return line;
+}
 
 int msh_execute(char **args) {
-    /*
-     * TODO: Thực thi một lệnh
-     * 
-     * Steps:
-     * 1. Nếu args[0] == NULL (lệnh rỗng), return MSH_CONTINUE
-     * 2. Kiểm tra xem có phải builtin command không:
-     *    - Duyệt qua builtin_str[]
-     *    - So sánh bằng _stricmp() (case-insensitive)
-     *    - Nếu match, gọi builtin_func[i](args)
-     * 3. Nếu không phải builtin, gọi msh_launch(args)
-     */
-    
     if (args[0] == NULL) {
         return MSH_CONTINUE;
     }
 
+    /* Check for shell-specific commands */
+    if (_stricmp(args[0], "history") == 0) return msh_history(args);
+    if (_stricmp(args[0], "alias") == 0)   return msh_alias(args);
+    if (_stricmp(args[0], "unalias") == 0) return msh_unalias(args);
+    if (_stricmp(args[0], "export") == 0)  return msh_export(args);
+    if (_stricmp(args[0], "unset") == 0)   return msh_unset(args);
+    if (_stricmp(args[0], "env") == 0)     return msh_env(args);
+    if (_stricmp(args[0], "source") == 0 || strcmp(args[0], ".") == 0) return msh_source(args);
+
+    /* Check for utility commands */
+    if (_stricmp(args[0], "cat") == 0)       return msh_cat(args);
+    if (_stricmp(args[0], "touch") == 0)     return msh_touch(args);
+    if (_stricmp(args[0], "rm") == 0)        return msh_rm(args);
+    if (_stricmp(args[0], "cp") == 0)        return msh_cp(args);
+    if (_stricmp(args[0], "mv") == 0)        return msh_mv(args);
+    if (_stricmp(args[0], "head") == 0)      return msh_head(args);
+    if (_stricmp(args[0], "tail") == 0)      return msh_tail(args);
+    if (_stricmp(args[0], "wc") == 0)        return msh_wc(args);
+    if (_stricmp(args[0], "mkdir") == 0)     return msh_mkdir(args);
+    if (_stricmp(args[0], "whoami") == 0)    return msh_whoami(args);
+    if (_stricmp(args[0], "hostname") == 0)  return msh_hostname(args);
+    if (_stricmp(args[0], "uptime") == 0)    return msh_uptime(args);
+    if (_stricmp(args[0], "echo") == 0)      return msh_echo(args);
+    if (_stricmp(args[0], "clear") == 0)     return msh_clear(args);
+
+    /* Check builtin commands */
     for (int i = 0; i < msh_num_builtins(); i++) {
         if (_stricmp(args[0], builtin_str[i]) == 0) {
             return (*builtin_func[i])(args);
@@ -140,39 +123,88 @@ int msh_execute(char **args) {
     return msh_launch(args);
 }
 
-/*============================================================
- * MAIN LOOP
- *============================================================*/
+int msh_execute_line(const char *raw_line) {
+    char *line = malloc(strlen(raw_line) + 1);
+    if (!line) return MSH_CONTINUE;
+    strcpy(line, raw_line);
+    
+    char **args;
+    int status = MSH_CONTINUE;
+
+    if (line[0] == '\0') {
+        free(line);
+        return MSH_CONTINUE;
+    }
+
+    /* 1. Expand history shortcuts (!! and !n) */
+    line = expand_history_cmd(line);
+
+    /* 2. Expand aliases */
+    char *aliasExpanded = alias_expand(line);
+    if (aliasExpanded) {
+        free(line);
+        line = aliasExpanded;
+    }
+
+    /* 3. Expand environment variables ($VAR) */
+    char *envExpanded = expand_env_vars(line);
+    if (envExpanded) {
+        free(line);
+        line = envExpanded;
+    }
+
+    /* 4. Check for pipe operator */
+    if (has_pipe(line)) {
+        execute_piped(line);
+        free(line);
+        return MSH_CONTINUE;
+    }
+
+    /* 5. Check for I/O redirection */
+    if (has_redirect(line)) {
+        execute_redirected(line);
+        free(line);
+        return MSH_CONTINUE;
+    }
+
+    /* 6. Normal execution */
+    args = msh_split_line(line);
+    status = msh_execute(args);
+    
+    free(line);
+    free(args);
+    return status;
+}
 
 void msh_loop(void) {
-    /*
-     * TODO: Vòng lặp chính của shell
-     * 
-     * Repeat:
-     * 1. cleanup_zombies() - dọn dẹp background processes đã xong
-     * 2. In prompt "msh> "
-     * 3. Đọc input bằng msh_read_line()
-     * 4. Parse input bằng msh_split_line()
-     * 5. Thực thi bằng msh_execute()
-     * 6. Free memory
-     * 7. Nếu status == MSH_EXIT (0), thoát loop
-     */
-    
     char *line;
-    char **args;
-    int status;
+    int status = MSH_CONTINUE;
 
     do {
         cleanup_zombies();
 
-        printf("msh> ");
+        hacker_prompt();
         
         line = msh_read_line();
-        args = msh_split_line(line);
-        status = msh_execute(args);
+        
+        /* Skip empty lines */
+        if (line[0] == '\0') {
+            free(line);
+            continue;
+        }
+
+        /* Add to history before processing (so raw input is saved) */
+        char *expanded_for_history = expand_history_cmd(malloc(strlen(line) + 1) ? strcpy(malloc(strlen(line) + 1), line) : line);
+        history_add(expanded_for_history);
+        free(expanded_for_history);
+
+        status = msh_execute_line(line);
         
         free(line);
-        free(args);
         
     } while (status);
+
+    /* Save state on exit */
+    history_save();
+    alias_save();
 }
