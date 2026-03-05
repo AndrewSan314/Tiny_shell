@@ -1,22 +1,23 @@
 #include "builtins.h"
-#include "core.h"
-#include "process_manager.h"
+#include "ai.h"
 #include "colors.h"
+#include "core.h"
+#include "hacker.h"
+#include "process_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "hacker.h"
 
 char *builtin_str[] = {"cd",     "pwd",  "dir",    "datetime",   "cls",
                        "help",   "exit", "path",   "addpath",    "list",
                        "kill",   "stop", "resume", "systeminfo", "grep",
-                       "search", "diff", "demo"};
+                       "search", "diff", "demo",   "aimode",     "ai"};
 
 int (*builtin_func[])(char **) = {
     &msh_cd,     &msh_pwd,  &msh_dir,    &msh_datetime,   &msh_cls,
     &msh_help,   &msh_exit, &msh_path,   &msh_addpath,    &msh_list,
     &msh_kill,   &msh_stop, &msh_resume, &msh_systeminfo, &msh_grep,
-    &msh_search, &msh_diff, &msh_demo};
+    &msh_search, &msh_diff, &msh_demo,   &msh_aimode,     &msh_ai};
 
 int msh_num_builtins(void) { return sizeof(builtin_str) / sizeof(char *); }
 
@@ -27,15 +28,17 @@ static void demo_separator(void) {
 }
 
 static void demo_run_command(const char *cmd, int pauseMs) {
+  Sleep(500); /* pause before typing */
   set_color(CLR_BRIGHT_GREEN);
   printf("  msh> ");
   set_color(CLR_BRIGHT_WHITE);
-  hacker_type(cmd, 10);
+  hacker_type(cmd, 40);
   reset_color();
   printf("\n");
 
   msh_execute_line(cmd);
-  if (pauseMs > 0) Sleep(pauseMs);
+  if (pauseMs > 0)
+    Sleep(pauseMs);
 }
 
 int msh_path(char **args) {
@@ -230,15 +233,66 @@ int msh_help(char **args) {
   set_color(CLR_MUTED);
   printf("  ──────────────────────────────────────────────────\n");
   reset_color();
-  set_color(CLR_BRIGHT_CYAN); printf("  cat <file>         "); reset_color(); printf("Display file with line numbers\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  head <file> [n]    "); reset_color(); printf("Show first N lines\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  tail <file> [n]    "); reset_color(); printf("Show last N lines\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  wc <file>          "); reset_color(); printf("Count lines/words/chars\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  touch <file>       "); reset_color(); printf("Create file / update timestamp\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  cp <src> <dst>     "); reset_color(); printf("Copy a file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  mv <src> <dst>     "); reset_color(); printf("Move or rename a file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  rm <file>          "); reset_color(); printf("Delete a file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  mkdir <dir>        "); reset_color(); printf("Create a directory\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cat <file>         ");
+  reset_color();
+  printf("Display file with line numbers\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  head <file> [n]    ");
+  reset_color();
+  printf("Show first N lines\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  tail <file> [n]    ");
+  reset_color();
+  printf("Show last N lines\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  wc <file>          ");
+  reset_color();
+  printf("Count lines/words/chars\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  touch <file>       ");
+  reset_color();
+  printf("Create file / update timestamp\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cp <src> <dst>     ");
+  reset_color();
+  printf("Copy a file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  mv <src> <dst>     ");
+  reset_color();
+  printf("Move or rename a file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  rm <file>          ");
+  reset_color();
+  printf("Delete a file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  mkdir <dir>        ");
+  reset_color();
+  printf("Create a directory\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  tree [path] [-d n] [-s ms] ");
+  reset_color();
+  printf("Directory tree (use -s <ms> to control speed)\n");
+  printf("\n");
+
+  /* Calculator & Themes */
+  set_color(CLR_BRIGHT_YELLOW);
+  printf("  EXTRAS\n");
+  set_color(CLR_MUTED);
+  printf("  ──────────────────────────────────────────────────\n");
+  reset_color();
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  calc <expr>        ");
+  reset_color();
+  printf("Built-in calculator\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  color <theme>      ");
+  reset_color();
+  printf("Switch color theme\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  source <file>      ");
+  reset_color();
+  printf("Run script file\n");
   printf("\n");
 
   /* Environment */
@@ -247,10 +301,22 @@ int msh_help(char **args) {
   set_color(CLR_MUTED);
   printf("  ──────────────────────────────────────────────────\n");
   reset_color();
-  set_color(CLR_BRIGHT_CYAN); printf("  export VAR=value   "); reset_color(); printf("Set environment variable\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  unset VAR          "); reset_color(); printf("Remove environment variable\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  env                "); reset_color(); printf("List all env variables\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  echo <text>        "); reset_color(); printf("Print text ($VAR expanded)\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  export VAR=value   ");
+  reset_color();
+  printf("Set environment variable\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  unset VAR          ");
+  reset_color();
+  printf("Remove environment variable\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  env                ");
+  reset_color();
+  printf("List all env variables\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  echo <text>        ");
+  reset_color();
+  printf("Print text ($VAR expanded)\n");
   printf("\n");
 
   /* History & Aliases */
@@ -259,11 +325,26 @@ int msh_help(char **args) {
   set_color(CLR_MUTED);
   printf("  ──────────────────────────────────────────────────\n");
   reset_color();
-  set_color(CLR_BRIGHT_CYAN); printf("  history            "); reset_color(); printf("Show command history\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  !!                 "); reset_color(); printf("Repeat last command\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  !n                 "); reset_color(); printf("Repeat command #n\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  alias name=cmd     "); reset_color(); printf("Create an alias\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  unalias name       "); reset_color(); printf("Remove an alias\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  history            ");
+  reset_color();
+  printf("Show command history\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  !!                 ");
+  reset_color();
+  printf("Repeat last command\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  !n                 ");
+  reset_color();
+  printf("Repeat command #n\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  alias name=cmd     ");
+  reset_color();
+  printf("Create an alias\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  unalias name       ");
+  reset_color();
+  printf("Remove an alias\n");
   printf("\n");
 
   /* I/O & Shell */
@@ -272,18 +353,66 @@ int msh_help(char **args) {
   set_color(CLR_MUTED);
   printf("  ──────────────────────────────────────────────────\n");
   reset_color();
-  set_color(CLR_BRIGHT_CYAN); printf("  cmd1 | cmd2        "); reset_color(); printf("Pipe output between commands\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  cmd > file         "); reset_color(); printf("Redirect output to file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  cmd >> file        "); reset_color(); printf("Append output to file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  cmd < file         "); reset_color(); printf("Read input from file\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  whoami             "); reset_color(); printf("Show current user\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  hostname           "); reset_color(); printf("Show computer name\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  uptime             "); reset_color(); printf("Show system uptime\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  cls / clear        "); reset_color(); printf("Clear screen\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  help               "); reset_color(); printf("Show this help message\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  demo [epic]        "); reset_color(); printf("Run cinematic showcase (epic = max FX)\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  exit               "); reset_color(); printf("Exit MSH shell\n");
-  set_color(CLR_BRIGHT_CYAN); printf("  Ctrl+C             "); reset_color(); printf("Kill foreground process\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cmd1 | cmd2        ");
+  reset_color();
+  printf("Pipe output between commands\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cmd > file         ");
+  reset_color();
+  printf("Redirect output to file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cmd >> file        ");
+  reset_color();
+  printf("Append output to file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cmd < file         ");
+  reset_color();
+  printf("Read input from file\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  whoami             ");
+  reset_color();
+  printf("Show current user\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  hostname           ");
+  reset_color();
+  printf("Show computer name\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  uptime             ");
+  reset_color();
+  printf("Show system uptime\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  cls / clear        ");
+  reset_color();
+  printf("Clear screen\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  help               ");
+  reset_color();
+  printf("Show this help message\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  demo [epic]        ");
+  reset_color();
+  printf("Run cinematic showcase (epic = max FX)\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  aimode on|off      ");
+  reset_color();
+  printf("Toggle AI chat mode\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  ai <message>       ");
+  reset_color();
+  printf("Single AI request\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  !<command>         ");
+  reset_color();
+  printf("Run shell command while AI mode is ON\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  exit               ");
+  reset_color();
+  printf("Exit MSH shell\n");
+  set_color(CLR_BRIGHT_CYAN);
+  printf("  Ctrl+C             ");
+  reset_color();
+  printf("Kill foreground process\n");
   printf("\n");
 
   set_color(CLR_MUTED);
@@ -296,7 +425,8 @@ int msh_help(char **args) {
 
 int msh_demo(char **args) {
   int epic = 0;
-  if (args[1] && _stricmp(args[1], "epic") == 0) epic = 1;
+  if (args[1] && _stricmp(args[1], "epic") == 0)
+    epic = 1;
 
   system("cls");
   printf("\n");
@@ -320,14 +450,83 @@ int msh_demo(char **args) {
   printf("\n");
   demo_separator();
 
-  demo_run_command("pwd", 200);
-  demo_run_command("datetime", 200);
-  demo_run_command("dir", 250);
-  demo_run_command("search *.c src", 250);
-  demo_run_command("grep msh src\\main.c", 250);
-  demo_run_command("systeminfo", 250);
-  demo_run_command("help", 150);
-  demo_run_command("history", epic ? 220 : 150);
+  /* === Section 1: Navigation & System === */
+  set_color(CLR_HEADER);
+  printf("\n  [ NAVIGATION & SYSTEM ]\n");
+  reset_color();
+  demo_run_command("pwd", 800);
+  demo_run_command("datetime", 800);
+  demo_run_command("dir", 1000);
+  demo_run_command("systeminfo", 1200);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 2: File Operations === */
+  set_color(CLR_HEADER);
+  printf("\n  [ FILE OPERATIONS ]\n");
+  reset_color();
+  demo_run_command("tree src -d 1", 1200);
+  demo_run_command("search *.c src", 1000);
+  demo_run_command("grep msh src\\main.c", 1000);
+  demo_run_command("wc src\\main.c", 800);
+  demo_run_command("head src\\main.c 5", 800);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 3: Calculator === */
+  set_color(CLR_HEADER);
+  printf("\n  [ BUILT-IN CALCULATOR ]\n");
+  reset_color();
+  demo_run_command("calc 2+3*4", 1000);
+  demo_run_command("calc (10-3)/2", 1000);
+  demo_run_command("calc 3.14*5*5", 1000);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 4: Aliases & Environment === */
+  set_color(CLR_HEADER);
+  printf("\n  [ ALIASES & ENVIRONMENT ]\n");
+  reset_color();
+  demo_run_command("alias ll=dir", 800);
+  demo_run_command("alias", 800);
+  demo_run_command("export GREETING=Hello_from_MSH", 800);
+  demo_run_command("echo $GREETING", 800);
+  demo_run_command("unalias ll", 600);
+  demo_run_command("unset GREETING", 600);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 5: Pipe & Redirect === */
+  set_color(CLR_HEADER);
+  printf("\n  [ PIPE & REDIRECT ]\n");
+  reset_color();
+  demo_run_command("echo Hello World > test_demo.txt", 800);
+  demo_run_command("cat test_demo.txt", 800);
+  demo_run_command("echo MSH is awesome >> test_demo.txt", 800);
+  demo_run_command("cat test_demo.txt", 800);
+  demo_run_command("rm test_demo.txt", 600);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 6: Color Themes === */
+  set_color(CLR_HEADER);
+  printf("\n  [ COLOR THEMES ]\n");
+  reset_color();
+  demo_run_command("color", 1200);
+  demo_run_command("color ocean", 1500);
+  demo_run_command("dir", 1200);
+  demo_run_command("color sunset", 1500);
+  demo_run_command("calc 42*42", 1200);
+  demo_run_command("color matrix", 1200);
+  demo_separator();
+  Sleep(800);
+
+  /* === Section 7: Help & History === */
+  set_color(CLR_HEADER);
+  printf("\n  [ COMMANDS OVERVIEW ]\n");
+  reset_color();
+  demo_run_command("help", 1500);
+  demo_run_command("history", epic ? 1000 : 800);
 
   demo_separator();
   set_color(CLR_SUCCESS);
@@ -382,7 +581,8 @@ int msh_dir(char **args) {
   int fileCount = 0, dirCount = 0;
 
   do {
-    if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0)
+    if (strcmp(findData.cFileName, ".") == 0 ||
+        strcmp(findData.cFileName, "..") == 0)
       continue;
 
     if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -391,11 +591,13 @@ int msh_dir(char **args) {
       dirCount++;
     } else {
       /* Get file size */
-      ULONGLONG fileSize = ((ULONGLONG)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
+      ULONGLONG fileSize =
+          ((ULONGLONG)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
 
       /* Color executables differently */
       const char *dot = strrchr(findData.cFileName, '.');
-      if (dot && (_stricmp(dot, ".exe") == 0 || _stricmp(dot, ".bat") == 0 || _stricmp(dot, ".cmd") == 0)) {
+      if (dot && (_stricmp(dot, ".exe") == 0 || _stricmp(dot, ".bat") == 0 ||
+                  _stricmp(dot, ".cmd") == 0)) {
         set_color(CLR_EXE_COLOR);
       } else {
         set_color(CLR_FILE_COLOR);
@@ -511,7 +713,8 @@ int msh_systeminfo(char **args) {
   printf("  Memory    ");
   reset_color();
   printf(" [");
-  set_color(percent > 80 ? CLR_ERROR : (percent > 50 ? CLR_WARNING : CLR_SUCCESS));
+  set_color(percent > 80 ? CLR_ERROR
+                         : (percent > 50 ? CLR_WARNING : CLR_SUCCESS));
   for (int i = 0; i < barWidth; i++)
     printf(i < filled ? "#" : " ");
   reset_color();

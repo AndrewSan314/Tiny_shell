@@ -16,6 +16,7 @@ SOURCES = $(SRCDIR)/main.c \
           $(SRCDIR)/utils.c \
           $(SRCDIR)/config.c \
           $(SRCDIR)/hacker.c \
+          $(SRCDIR)/ai.c \
           $(SRCDIR)/process_manager.c \
           $(SRCDIR)/builtins.c \
           $(SRCDIR)/launcher.c
@@ -69,4 +70,5 @@ $(SRCDIR)/core.o: $(SRCDIR)/core.c $(SRCDIR)/core.h $(SRCDIR)/builtins.h $(SRCDI
 $(SRCDIR)/colors.o: $(SRCDIR)/colors.c $(SRCDIR)/colors.h include/common.h
 $(SRCDIR)/process_manager.o: $(SRCDIR)/process_manager.c $(SRCDIR)/process_manager.h $(SRCDIR)/colors.h include/common.h
 $(SRCDIR)/builtins.o: $(SRCDIR)/builtins.c $(SRCDIR)/builtins.h $(SRCDIR)/process_manager.h $(SRCDIR)/colors.h include/common.h
+$(SRCDIR)/ai.o: $(SRCDIR)/ai.c $(SRCDIR)/ai.h $(SRCDIR)/colors.h include/common.h
 $(SRCDIR)/launcher.o: $(SRCDIR)/launcher.c $(SRCDIR)/launcher.h $(SRCDIR)/process_manager.h $(SRCDIR)/colors.h include/common.h
