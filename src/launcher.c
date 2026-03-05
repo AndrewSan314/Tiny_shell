@@ -8,6 +8,51 @@
 
 extern HANDLE hForegroundProcess;
 
+static int get_output_delay_ms(void) {
+    char value[16];
+    DWORD len = GetEnvironmentVariableA("MSH_OUTPUT_DELAY_MS", value, sizeof(value));
+    int delayMs;
+
+    if (len == 0 || len >= sizeof(value)) {
+        return 5;
+    }
+
+    delayMs = atoi(value);
+    if (delayMs < 0) {
+        delayMs = 0;
+    }
+    if (delayMs > 100) {
+        delayMs = 100;
+    }
+    return delayMs;
+}
+
+static void replay_process_output(HANDLE hReadPipe, int delayMs) {
+    char buffer[256];
+    DWORD bytesRead;
+
+    if (!hReadPipe) {
+        return;
+    }
+
+    while (ReadFile(hReadPipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
+        for (DWORD i = 0; i < bytesRead; i++) {
+            putchar(buffer[i]);
+            fflush(stdout);
+
+            if (delayMs <= 0) {
+                continue;
+            }
+
+            if (buffer[i] == '\n') {
+                Sleep(delayMs * 2);
+            } else if (buffer[i] != '\r') {
+                Sleep(delayMs);
+            }
+        }
+    }
+}
+
 int is_batch_file(const char *filename) {
     if(filename == NULL) {
         return 0;
@@ -25,8 +70,12 @@ int is_batch_file(const char *filename) {
 int msh_launch(char **args) {
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
+    SECURITY_ATTRIBUTES sa;
+    HANDLE hReadPipe = NULL;
+    HANDLE hWritePipe = NULL;
     char command[MAX_CMD_LEN] = {0};
     int background = 0;
+    int outputDelayMs = 0;
     int i = 0;
 
     while(args[i] != NULL) i++;
@@ -60,14 +109,33 @@ int msh_launch(char **args) {
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
+    if (!background) {
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, 0)) {
+            print_error("Failed to prepare output capture");
+            return MSH_CONTINUE;
+        }
+
+        SetHandleInformation(hReadPipe, HANDLE_FLAG_INHERIT, 0);
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        si.hStdOutput = hWritePipe;
+        si.hStdError = hWritePipe;
+    }
+
     DWORD creationFlags = background ? 0 : CREATE_NEW_PROCESS_GROUP;
 
-    if(!CreateProcess(NULL, command, NULL, NULL, FALSE,
+    if(!CreateProcess(NULL, command, NULL, NULL, background ? FALSE : TRUE,
                       creationFlags,
                       NULL, NULL, &si, &pi)) {
         char msg[MAX_CMD_LEN + 64];
         sprintf(msg, "Command not found: %s", args[0]);
         print_error(msg);
+        if (hReadPipe) CloseHandle(hReadPipe);
+        if (hWritePipe) CloseHandle(hWritePipe);
         return MSH_CONTINUE;
     }
 
@@ -77,15 +145,19 @@ int msh_launch(char **args) {
         print_info(msg);
         add_bg_process(pi.dwProcessId, pi.hProcess, pi.hThread, command);
     } else {
+        outputDelayMs = get_output_delay_ms();
         hForegroundProcess = pi.hProcess;
-        while(hForegroundProcess != NULL) {
-            WaitForSingleObject(pi.hProcess, 100);
-            DWORD exitCode;
-            if(GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
-                break;
-            }
+
+        if (hWritePipe) {
+            CloseHandle(hWritePipe);
+            hWritePipe = NULL;
         }
+
+        replay_process_output(hReadPipe, outputDelayMs);
+        WaitForSingleObject(pi.hProcess, INFINITE);
         hForegroundProcess = NULL;
+
+        if (hReadPipe) CloseHandle(hReadPipe);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     }

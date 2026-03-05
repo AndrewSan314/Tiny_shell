@@ -21,4 +21,9 @@ int msh_uptime(char **args);
 int msh_echo(char **args);
 int msh_clear(char **args);
 
+/* New commands */
+int msh_tree(char **args);
+int msh_calc(char **args);
+int msh_color(char **args);
+
 #endif /* UTILS_H */

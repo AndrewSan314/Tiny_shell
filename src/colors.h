@@ -9,40 +9,42 @@
  *============================================================*/
 
 /* Base colors */
-#define CLR_BLACK       0
-#define CLR_BLUE        (FOREGROUND_BLUE)
-#define CLR_GREEN       (FOREGROUND_GREEN)
-#define CLR_CYAN        (FOREGROUND_GREEN | FOREGROUND_BLUE)
-#define CLR_RED         (FOREGROUND_RED)
-#define CLR_MAGENTA     (FOREGROUND_RED | FOREGROUND_BLUE)
-#define CLR_YELLOW      (FOREGROUND_RED | FOREGROUND_GREEN)
-#define CLR_WHITE       (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
+#define CLR_BLACK 0
+#define CLR_BLUE (FOREGROUND_BLUE)
+#define CLR_GREEN (FOREGROUND_GREEN)
+#define CLR_CYAN (FOREGROUND_GREEN | FOREGROUND_BLUE)
+#define CLR_RED (FOREGROUND_RED)
+#define CLR_MAGENTA (FOREGROUND_RED | FOREGROUND_BLUE)
+#define CLR_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
+#define CLR_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 
 /* Bright/Intense colors */
-#define CLR_BRIGHT_BLUE     (CLR_BLUE | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_GREEN    (CLR_GREEN | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_CYAN     (CLR_CYAN | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_RED      (CLR_RED | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_MAGENTA  (CLR_MAGENTA | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_YELLOW   (CLR_YELLOW | FOREGROUND_INTENSITY)
-#define CLR_BRIGHT_WHITE    (CLR_WHITE | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_BLUE (CLR_BLUE | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_GREEN (CLR_GREEN | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_CYAN (CLR_CYAN | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_RED (CLR_RED | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_MAGENTA (CLR_MAGENTA | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_YELLOW (CLR_YELLOW | FOREGROUND_INTENSITY)
+#define CLR_BRIGHT_WHITE (CLR_WHITE | FOREGROUND_INTENSITY)
 
-/* Semantic colors - used throughout the shell */
-/* Semantic colors - used throughout the shell (Matrix Theme) */
-#define CLR_PROMPT      CLR_BRIGHT_GREEN
-#define CLR_PATH        CLR_BRIGHT_GREEN
-#define CLR_ERROR       CLR_BRIGHT_RED
-#define CLR_SUCCESS     CLR_BRIGHT_GREEN
-#define CLR_WARNING     CLR_GREEN
-#define CLR_INFO        CLR_GREEN
-#define CLR_HEADER      CLR_BRIGHT_GREEN
-#define CLR_MUTED       CLR_GREEN
-#define CLR_ACCENT      CLR_BRIGHT_GREEN
-#define CLR_DEFAULT     CLR_GREEN
-#define CLR_HIGHLIGHT   CLR_BRIGHT_WHITE
-#define CLR_DIR_COLOR   CLR_BRIGHT_GREEN
-#define CLR_FILE_COLOR  CLR_GREEN
-#define CLR_EXE_COLOR   CLR_BRIGHT_GREEN
+/* Semantic colors - runtime globals (switchable themes) */
+extern WORD CLR_PROMPT;
+extern WORD CLR_PATH;
+extern WORD CLR_ERROR;
+extern WORD CLR_SUCCESS;
+extern WORD CLR_WARNING;
+extern WORD CLR_INFO;
+extern WORD CLR_HEADER;
+extern WORD CLR_MUTED;
+extern WORD CLR_ACCENT;
+extern WORD CLR_DEFAULT;
+extern WORD CLR_HIGHLIGHT;
+extern WORD CLR_DIR_COLOR;
+extern WORD CLR_FILE_COLOR;
+extern WORD CLR_EXE_COLOR;
+
+/* Demo mode flag - slows down output for video recording */
+extern int g_demo_mode;
 
 /*============================================================
  * FUNCTION DECLARATIONS
@@ -50,6 +52,12 @@
 
 /* Initialize console color support */
 void colors_init(void);
+
+/* Set/apply a named color theme */
+void colors_set_theme(const char *name);
+
+/* Get current theme name */
+const char *colors_get_theme(void);
 
 /* Set console text color */
 void set_color(WORD color);
