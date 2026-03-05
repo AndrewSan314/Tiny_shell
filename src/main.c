@@ -5,6 +5,7 @@
 #include "alias.h"
 #include "config.h"
 #include "hacker.h"
+#include "ai.h"
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -14,6 +15,7 @@ int main(int argc, char **argv) {
     colors_init();
     history_init();
     alias_init();
+    ai_init();
     
     if (!SetConsoleCtrlHandler(CtrlHandler, TRUE)) {
         print_warning("Could not set control handler");

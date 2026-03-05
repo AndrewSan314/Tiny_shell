@@ -43,7 +43,8 @@ static int is_ai_env_command(const char *line) {
   if (_stricmp(cmd, "export") != 0 && _stricmp(cmd, "unset") != 0)
     return 0;
 
-  if (strstr(line, "GEMINI_API_KEY") || strstr(line, "GOOGLE_API_KEY") ||
+  if (strstr(line, "OPENROUTER_API_KEY") || strstr(line, "GEMINI_API_KEY") ||
+      strstr(line, "GOOGLE_API_KEY") ||
       strstr(line, "MSH_AI_MODEL") || strstr(line, "MSH_AI_URL") ||
       strstr(line, "MSH_AI_DELAY_MS"))
     return 1;

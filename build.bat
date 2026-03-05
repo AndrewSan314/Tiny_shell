@@ -81,7 +81,7 @@ if %errorlevel% neq 0 goto :error
 REM Link
 echo.
 echo Linking...
-gcc src/main.o src/core.o src/colors.o src/history.o src/readline.o src/alias.o src/pipe_redirect.o src/config.o src/hacker.o src/ai.o src/process_manager.o src/builtins.o src/launcher.o src/utils.o -o msh.exe
+gcc src/main.o src/core.o src/colors.o src/history.o src/readline.o src/alias.o src/pipe_redirect.o src/config.o src/hacker.o src/ai.o src/process_manager.o src/builtins.o src/launcher.o src/utils.o -o msh.exe -lwinhttp
 if %errorlevel% neq 0 goto :error
 
 echo.
