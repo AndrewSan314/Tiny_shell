@@ -49,6 +49,7 @@ BOOL WINAPI CtrlHandler(DWORD fdwCtrlType) {
             print_warning("Terminated foreground process");
         } else {
             print_info("No foreground process. Type 'exit' to quit.");
+            hacker_begin_prompt();
             hacker_prompt();
         }
         return TRUE;

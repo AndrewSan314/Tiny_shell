@@ -1,4 +1,5 @@
 #include "hacker.h"
+#include "ai.h"
 #include "colors.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -274,7 +275,6 @@ static void hacker_countdown(const char *label, int start, int delayMs) {
         reset_color();
         printf("...");
         fflush(stdout);
-        Beep(900 + (start - i) * 200, 40);
         Sleep(delayMs);
     }
     printf("\n");
@@ -431,9 +431,6 @@ void hacker_access_granted(void) {
     printf(" <<<");
     reset_color();
     printf("\n");
-    Beep(1200, 80);
-    Sleep(40);
-    Beep(1600, 120);
 }
 
 void hacker_glitch_reveal(const char *text, WORD color, int iterations) {
@@ -619,6 +616,6 @@ void hacker_prompt(void) {
     reset_color();
     printf("\n");
     set_color(CLR_BRIGHT_GREEN);
-    printf(">> ");
+    printf(ai_is_mode_enabled() ? "[AI]>> " : ">> ");
     reset_color();
 }

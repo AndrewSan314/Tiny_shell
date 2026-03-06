@@ -25,8 +25,8 @@
 
 /* Redraw the current line buffer from scratch */
 static void redraw_line(char *buf, int len, int cursor) {
-    /* Move to start of line, clear it, reprint */
-    printf("\r");
+    /* Move back to the first line of the two-line prompt block. */
+    hacker_rewind_prompt();
     /* Print prompt again */
     hacker_prompt();
     /* Print buffer */

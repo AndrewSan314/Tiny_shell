@@ -53,12 +53,26 @@ msh.exe
 
 ### 2-Minute Demo Flow
 
+The curated `demo` flow now opens with the GoogleMap app launcher, then moves through source workflow, visual identity, and ends with the built-in AI copilot. The GoogleMap batch segment opens the local web app briefly before returning to the shell.
+
 ```cmd
 msh.exe
+demo
+```
+
+For a higher-intensity recording, use:
+
+```cmd
 demo epic
 ```
 
-After the scripted flow ends, run 2-3 freestyle commands (for example: `alias`, `history`, `search *.c src`) and finish with:
+For automated capture, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File demo_video.ps1
+```
+
+If you run the showcase manually, finish with:
 
 ```cmd
 exit

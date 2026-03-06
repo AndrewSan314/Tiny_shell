@@ -27,18 +27,62 @@ static void demo_separator(void) {
   reset_color();
 }
 
+static int demo_pace(int ms) {
+  return (ms * 6) / 5;
+}
+
+static void demo_info(const char *message, int pauseMs) {
+  if (!message || message[0] == '\0')
+    return;
+
+  Sleep(demo_pace(300));
+  set_color(CLR_INFO);
+  printf("  [INFO] ");
+  reset_color();
+  printf("%s\n", message);
+  if (pauseMs > 0)
+    Sleep(demo_pace(pauseMs));
+}
+
 static void demo_run_command(const char *cmd, int pauseMs) {
-  Sleep(500); /* pause before typing */
+  Sleep(demo_pace(500)); /* pause before typing */
   set_color(CLR_BRIGHT_GREEN);
   printf("  msh> ");
   set_color(CLR_BRIGHT_WHITE);
-  hacker_type(cmd, 40);
+  hacker_type(cmd, 48);
   reset_color();
   printf("\n");
 
   msh_execute_line(cmd);
   if (pauseMs > 0)
-    Sleep(pauseMs);
+    Sleep(demo_pace(pauseMs));
+}
+
+static int demo_ai_available(void) {
+  char apiKey[256];
+  DWORD len = GetEnvironmentVariableA("OPENROUTER_API_KEY", apiKey,
+                                      (DWORD)sizeof(apiKey));
+  return len > 0 && len < sizeof(apiKey);
+}
+
+static void demo_preview_url(const char *url, int viewMs) {
+  HWND console;
+  char command[512];
+
+  if (!url || url[0] == '\0')
+    return;
+
+  console = GetConsoleWindow();
+  snprintf(command, sizeof(command), "cmd /c start \"\" \"%s\"", url);
+  WinExec(command, SW_SHOWNORMAL);
+  Sleep(viewMs);
+
+  if (console) {
+    ShowWindow(console, SW_RESTORE);
+    BringWindowToTop(console);
+    SetForegroundWindow(console);
+    SetFocus(console);
+  }
 }
 
 int msh_path(char **args) {
@@ -437,21 +481,24 @@ int msh_help(char **args) {
 
 int msh_demo(char **args) {
   int epic = 0;
+  int aiReady;
   if (args[1] && _stricmp(args[1], "epic") == 0)
     epic = 1;
+
+  ai_set_mode(0);
+  ai_clear_history();
+  ai_set_system_prompt("");
+  aiReady = demo_ai_available();
 
   system("cls");
   printf("\n");
   hacker_glitch_reveal(epic ? "  MSH EPIC DEMO MODE" : "  MSH LIVE DEMO MODE",
                        CLR_BRIGHT_GREEN, epic ? 14 : 10);
-  set_color(CLR_INFO);
-  printf("  Running scripted showcase for a clean 2-minute recording%s.\n",
-         epic ? " (EPIC)" : "");
-  reset_color();
   demo_separator();
 
-  hacker_progress_bar("Preparing cinematic mode", epic ? 800 : 600);
-  hacker_scan("Checking command modules", epic ? 900 : 600);
+  hacker_progress_bar("Preparing cinematic mode",
+                      demo_pace(epic ? 800 : 600));
+  hacker_scan("Checking command modules", demo_pace(epic ? 900 : 600));
   if (epic) {
     set_color(CLR_BRIGHT_GREEN);
     printf("  [DATA] Live binary stream:\n");
@@ -462,87 +509,82 @@ int msh_demo(char **args) {
   printf("\n");
   demo_separator();
 
-  /* === Section 1: Navigation & System === */
+  /* === Section 1: Batch App Launcher === */
   set_color(CLR_HEADER);
-  printf("\n  [ NAVIGATION & SYSTEM ]\n");
+  printf("\n  [ BATCH APP LAUNCHER ]\n");
   reset_color();
-  demo_run_command("pwd", 800);
-  demo_run_command("datetime", 800);
-  demo_run_command("dir", 1000);
-  demo_run_command("systeminfo", 1200);
+  demo_info("Launching background services for the Map Application...", 900);
+  demo_run_command("run_googlemap.bat", 2200);
+  demo_preview_url("http://localhost:8080", demo_pace(4500));
+  demo_run_command("stop_googlemap.bat", 1400);
   demo_separator();
-  Sleep(800);
+  Sleep(demo_pace(800));
 
-  /* === Section 2: File Operations === */
+  /* === Section 2: Source Workflow === */
   set_color(CLR_HEADER);
-  printf("\n  [ FILE OPERATIONS ]\n");
+  printf("\n  [ SOURCE WORKFLOW ]\n");
   reset_color();
   demo_run_command("tree src -d 1", 1200);
-  demo_run_command("search *.c src", 1000);
-  demo_run_command("grep msh src\\main.c", 1000);
-  demo_run_command("wc src\\main.c", 800);
-  demo_run_command("head src\\main.c 5", 800);
+  demo_run_command("search *.c src", 1400);
+  demo_run_command("grep msh src\\main.c", 1500);
+  demo_run_command("head src\\main.c 5", 1000);
   demo_separator();
-  Sleep(800);
+  Sleep(demo_pace(800));
 
-  /* === Section 3: Calculator === */
+  /* === Section 3: Real Shell Flow === */
   set_color(CLR_HEADER);
-  printf("\n  [ BUILT-IN CALCULATOR ]\n");
-  reset_color();
-  demo_run_command("calc 2+3*4", 1000);
-  demo_run_command("calc (10-3)/2", 1000);
-  demo_run_command("calc 3.14*5*5", 1000);
-  demo_separator();
-  Sleep(800);
-
-  /* === Section 4: Aliases & Environment === */
-  set_color(CLR_HEADER);
-  printf("\n  [ ALIASES & ENVIRONMENT ]\n");
-  reset_color();
-  demo_run_command("alias ll=dir", 800);
-  demo_run_command("alias", 800);
-  demo_run_command("export GREETING=Hello_from_MSH", 800);
-  demo_run_command("echo $GREETING", 800);
-  demo_run_command("unalias ll", 600);
-  demo_run_command("unset GREETING", 600);
-  demo_separator();
-  Sleep(800);
-
-  /* === Section 5: Pipe & Redirect === */
-  set_color(CLR_HEADER);
-  printf("\n  [ PIPE & REDIRECT ]\n");
+  printf("\n  [ REAL SHELL FLOW ]\n");
   reset_color();
   demo_run_command("echo Hello World > test_demo.txt", 800);
-  demo_run_command("cat test_demo.txt", 800);
+  demo_run_command("cat test_demo.txt", 1200);
   demo_run_command("echo MSH is awesome >> test_demo.txt", 800);
-  demo_run_command("cat test_demo.txt", 800);
+  demo_run_command("cat test_demo.txt", 1300);
   demo_run_command("rm test_demo.txt", 600);
   demo_separator();
-  Sleep(800);
+  Sleep(demo_pace(800));
 
-  /* === Section 6: Color Themes === */
+  /* === Section 4: Visual Modes === */
   set_color(CLR_HEADER);
-  printf("\n  [ COLOR THEMES ]\n");
+  printf("\n  [ VISUAL MODES ]\n");
   reset_color();
-  demo_run_command("color", 1200);
   demo_run_command("color ocean", 1500);
   demo_run_command("dir", 1200);
   demo_run_command("color sunset", 1500);
-  demo_run_command("calc 42*42", 1200);
   demo_run_command("color matrix", 1200);
   demo_separator();
-  Sleep(800);
+  Sleep(demo_pace(800));
 
-  /* === Section 7: Help & History === */
+  /* === Section 5: AI Copilot === */
   set_color(CLR_HEADER);
-  printf("\n  [ COMMANDS OVERVIEW ]\n");
+  printf("\n  [ AI COPILOT ]\n");
   reset_color();
-  demo_run_command("help", 1500);
-  demo_run_command("history", epic ? 1000 : 800);
+  if (aiReady) {
+    ai_clear_history();
+    ai_set_system_prompt(
+        "You are MSH's demo AI copilot. Reply in one short sentence under 14 "
+        "words. Keep answers sharp, specific, and terminal-friendly.");
+
+    demo_run_command(
+        "ai explain what makes this shell different from a normal Windows terminal",
+        1400);
+    demo_run_command(
+        "ai suggest one command to inspect C source files in this project",
+        1400);
+    demo_run_command("aimode on", 1000);
+    demo_run_command("how can this shell help a C student?", 1400);
+    demo_run_command("!pwd", 800);
+    demo_run_command("aimode off", 800);
+
+    ai_clear_history();
+    ai_set_system_prompt("");
+  } else {
+    print_warning("AI showcase skipped: OPENROUTER_API_KEY is not set");
+    print_info("Use: export OPENROUTER_API_KEY=<your_key>");
+  }
 
   demo_separator();
   set_color(CLR_SUCCESS);
-  printf("  Showcase complete. Continue freestyle and end with: exit\n");
+  printf("  Showcase complete. Clean recording flow: demo -> exit\n");
   set_color(CLR_MUTED);
   printf("  Tip: run 'demo epic' for max visual intensity.\n");
   reset_color();
