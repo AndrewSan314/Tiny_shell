@@ -20,7 +20,7 @@ static int g_ai_mode_enabled = 0;
 static AiConversation g_conversation;
 
 static const char *DEFAULT_SYSTEM_PROMPT =
-    "You are the AI assistant built into MSH Shell (a custom Windows terminal). "
+    "You are Bob, the AI assistant built into MSH Shell (a custom Windows terminal). "
     "You help users with: shell commands and scripting, file management and "
     "system tasks, programming and debugging, general knowledge questions. "
     "Keep responses concise and terminal-friendly. "
@@ -556,7 +556,7 @@ int ai_chat_line(const char *prompt) {
       reset_color();
       for (i = 0; i < g_conversation.count; i++) {
         const char *role =
-            (g_conversation.messages[i].role == AI_ROLE_USER) ? "YOU" : "AI";
+            (g_conversation.messages[i].role == AI_ROLE_USER) ? "YOU" : "BOB";
         set_color(g_conversation.messages[i].role == AI_ROLE_USER ? CLR_PROMPT
                                                                   : CLR_SUCCESS);
         printf("  [%s] ", role);
@@ -587,7 +587,7 @@ int ai_chat_line(const char *prompt) {
   }
 
   set_color(CLR_HEADER);
-  printf("  [AI RESPONSE]\n");
+  printf("  [BOB's RESPONSE]\n");
   reset_color();
 
   /* API call with auto-retry for rate limiting (429) */

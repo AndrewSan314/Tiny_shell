@@ -6,6 +6,17 @@
 #include <time.h>
 
 static unsigned long g_promptCounter = 0;
+#define HACKER_PROMPT_LINES 2
+
+typedef struct {
+    unsigned long counter;
+    SYSTEMTIME timestamp;
+    char userName[256];
+    char shortDir[72];
+    int ready;
+} HackerPromptState;
+
+static HackerPromptState g_promptState;
 
 static HANDLE hacker_console_handle(void) {
     return GetStdHandle(STD_OUTPUT_HANDLE);
@@ -118,6 +129,78 @@ static void hacker_shorten_path(const char *src, char *dst, size_t dstSize) {
     strcpy(dst, "...");
     strncat(dst, src + (len - tailLen), tailLen);
     dst[dstSize - 1] = '\0';
+}
+
+static void hacker_capture_prompt_state(unsigned long counter) {
+    char currentDir[MAX_PATH];
+    DWORD userSize = sizeof(g_promptState.userName);
+
+    g_promptState.counter = counter;
+    GetCurrentDirectory(MAX_PATH, currentDir);
+    hacker_shorten_path(currentDir, g_promptState.shortDir, sizeof(g_promptState.shortDir));
+
+    if (!GetUserName(g_promptState.userName, &userSize)) {
+        strcpy(g_promptState.userName, "USER");
+    }
+
+    GetLocalTime(&g_promptState.timestamp);
+    g_promptState.ready = 1;
+}
+
+static int hacker_prompt_target_row(const CONSOLE_SCREEN_BUFFER_INFO *csbi) {
+    int windowHeight;
+    int targetRow;
+    int maxRow;
+
+    if (!csbi) return 8;
+
+    windowHeight = (int)(csbi->srWindow.Bottom - csbi->srWindow.Top + 1);
+    if (windowHeight < 12) return 3;
+
+    targetRow = (windowHeight * 3) / 5;
+    maxRow = windowHeight - HACKER_PROMPT_LINES - 3;
+
+    if (maxRow < 3) maxRow = 3;
+    if (targetRow < 3) targetRow = 3;
+    if (targetRow > maxRow) targetRow = maxRow;
+
+    return targetRow;
+}
+
+static void hacker_anchor_prompt_zone(void) {
+    HANDLE h = hacker_console_handle();
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int windowHeight;
+    int targetRow;
+    int relativeRow;
+
+    if (h == INVALID_HANDLE_VALUE) return;
+    if (!GetConsoleScreenBufferInfo(h, &csbi)) return;
+
+    windowHeight = (int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+    targetRow = hacker_prompt_target_row(&csbi);
+    relativeRow = (int)(csbi.dwCursorPosition.Y - csbi.srWindow.Top);
+
+    if (relativeRow > targetRow) {
+        SMALL_RECT window = csbi.srWindow;
+        SHORT maxTop = (SHORT)(csbi.dwSize.Y - windowHeight);
+        SHORT newTop = (SHORT)(csbi.dwCursorPosition.Y - targetRow);
+
+        if (newTop < 0) newTop = 0;
+        if (newTop > maxTop) newTop = maxTop;
+
+        window.Top = newTop;
+        window.Bottom = (SHORT)(newTop + windowHeight - 1);
+        SetConsoleWindowInfo(h, TRUE, &window);
+
+        if (!GetConsoleScreenBufferInfo(h, &csbi)) return;
+        relativeRow = (int)(csbi.dwCursorPosition.Y - csbi.srWindow.Top);
+    }
+
+    while (relativeRow < targetRow) {
+        putchar('\n');
+        relativeRow++;
+    }
 }
 
 static void hacker_entropy_burst(int lines, int columns, int delayMs) {
@@ -472,11 +555,11 @@ void hacker_boot_sequence(void) {
     hacker_rule_line(CLR_BRIGHT_GREEN);
     printf("\n");
 
-    hacker_glitch_reveal("   __  __  ____  _   _   ____  _   _ ", CLR_BRIGHT_GREEN, 12);
-    hacker_glitch_reveal("  |  \\/  |/ ___|| | | | / ___|| | | |", CLR_BRIGHT_GREEN, 12);
-    hacker_glitch_reveal("  | |\\/| |\\___ \\| |_| | \\___ \\| |_| |", CLR_BRIGHT_GREEN, 12);
-    hacker_glitch_reveal("  |_|  |_| ___) |  _  |  ___) |  _  |", CLR_BRIGHT_GREEN, 12);
-    hacker_glitch_reveal("          |____/|_| |_| |____/|_| |_|", CLR_BRIGHT_GREEN, 12);
+    hacker_glitch_reveal("   __  __  ____  _   _   ____  _   _  _____  _      _      ", CLR_BRIGHT_GREEN, 12);
+    hacker_glitch_reveal("  |  \\/  |/ ___|| | | | / ___|| | | || ____|| |    | |     ", CLR_BRIGHT_GREEN, 12);
+    hacker_glitch_reveal("  | |\\/| |\\___ \\| |_| | \\___ \\| |_| ||  _|  | |    | |     ", CLR_BRIGHT_GREEN, 12);
+    hacker_glitch_reveal("  | |  | | ___) |  _  |  ___) |  _  || |___ | |___ | |___  ", CLR_BRIGHT_GREEN, 12);
+    hacker_glitch_reveal("  |_|  |_||____/|_| |_| |____/|_| |_||_____||_____||_____| ", CLR_BRIGHT_GREEN, 12);
     printf("\n");
 
     hacker_access_granted();
@@ -490,23 +573,39 @@ void hacker_boot_sequence(void) {
     hacker_toggle_cursor(1);
 }
 
-void hacker_prompt(void) {
-    char currentDir[MAX_PATH];
-    char shortDir[72];
-    char userName[256];
-    DWORD userSize = sizeof(userName);
-    SYSTEMTIME st;
-
+void hacker_begin_prompt(void) {
     g_promptCounter++;
-    GetCurrentDirectory(MAX_PATH, currentDir);
-    hacker_shorten_path(currentDir, shortDir, sizeof(shortDir));
-    GetUserName(userName, &userSize);
-    GetLocalTime(&st);
+    hacker_capture_prompt_state(g_promptCounter);
+    hacker_anchor_prompt_zone();
+}
+
+void hacker_rewind_prompt(void) {
+    HANDLE h = hacker_console_handle();
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    COORD pos;
+
+    if (h == INVALID_HANDLE_VALUE) return;
+    if (!GetConsoleScreenBufferInfo(h, &csbi)) return;
+
+    pos = csbi.dwCursorPosition;
+    if (pos.Y > 0) pos.Y--;
+    pos.X = 0;
+    SetConsoleCursorPosition(h, pos);
+}
+
+void hacker_prompt(void) {
+    if (!g_promptState.ready) {
+        hacker_begin_prompt();
+    }
 
     set_color(CLR_MUTED);
-    printf("[#%04lu %02d:%02d:%02d] ", g_promptCounter, st.wHour, st.wMinute, st.wSecond);
+    printf("[#%04lu %02d:%02d:%02d] ",
+           g_promptState.counter,
+           g_promptState.timestamp.wHour,
+           g_promptState.timestamp.wMinute,
+           g_promptState.timestamp.wSecond);
     set_color(CLR_BRIGHT_GREEN);
-    printf("%s", userName);
+    printf("%s", g_promptState.userName);
     set_color(CLR_BRIGHT_WHITE);
     printf("@");
     set_color(CLR_BRIGHT_GREEN);
@@ -516,7 +615,7 @@ void hacker_prompt(void) {
     reset_color();
     printf(" ");
     set_color(CLR_BRIGHT_CYAN);
-    printf("%s", shortDir);
+    printf("%s", g_promptState.shortDir);
     reset_color();
     printf("\n");
     set_color(CLR_BRIGHT_GREEN);

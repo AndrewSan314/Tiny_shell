@@ -75,6 +75,8 @@ int msh_launch(char **args) {
     HANDLE hWritePipe = NULL;
     char command[MAX_CMD_LEN] = {0};
     int background = 0;
+    int batchFile = 0;
+    int captureOutput = 0;
     int outputDelayMs = 0;
     int i = 0;
 
@@ -89,7 +91,10 @@ int msh_launch(char **args) {
         return MSH_CONTINUE;
     }
 
-    if(is_batch_file(args[0])) {
+    batchFile = is_batch_file(args[0]);
+    captureOutput = (!background && !batchFile);
+
+    if(batchFile) {
         strcpy(command, "cmd /c ");
         strcat(command, args[0]);
         for(i = 1; args[i] != NULL; i++) {
@@ -109,7 +114,7 @@ int msh_launch(char **args) {
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    if (!background) {
+    if (captureOutput) {
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         sa.bInheritHandle = TRUE;
         sa.lpSecurityDescriptor = NULL;
@@ -128,7 +133,7 @@ int msh_launch(char **args) {
 
     DWORD creationFlags = background ? 0 : CREATE_NEW_PROCESS_GROUP;
 
-    if(!CreateProcess(NULL, command, NULL, NULL, background ? FALSE : TRUE,
+    if(!CreateProcess(NULL, command, NULL, NULL, captureOutput ? TRUE : FALSE,
                       creationFlags,
                       NULL, NULL, &si, &pi)) {
         char msg[MAX_CMD_LEN + 64];
@@ -145,15 +150,19 @@ int msh_launch(char **args) {
         print_info(msg);
         add_bg_process(pi.dwProcessId, pi.hProcess, pi.hThread, command);
     } else {
-        outputDelayMs = get_output_delay_ms();
         hForegroundProcess = pi.hProcess;
 
-        if (hWritePipe) {
-            CloseHandle(hWritePipe);
-            hWritePipe = NULL;
+        if (captureOutput) {
+            outputDelayMs = get_output_delay_ms();
+
+            if (hWritePipe) {
+                CloseHandle(hWritePipe);
+                hWritePipe = NULL;
+            }
+
+            replay_process_output(hReadPipe, outputDelayMs);
         }
 
-        replay_process_output(hReadPipe, outputDelayMs);
         WaitForSingleObject(pi.hProcess, INFINITE);
         hForegroundProcess = NULL;
 

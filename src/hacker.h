@@ -35,8 +35,14 @@ void hacker_glitch_reveal(const char *text, WORD color, int iterations);
 /* The full Hollywood startup sequence */
 void hacker_boot_sequence(void);
 
+/* Capture state and anchor the next prompt in a readable zone */
+void hacker_begin_prompt(void);
+
 /* Hacker-style prompt with timestamp */
 void hacker_prompt(void);
+
+/* Move the cursor back to the beginning of the active prompt block */
+void hacker_rewind_prompt(void);
 
 /* Random delay for "realism" */
 void hacker_delay(int minMs, int maxMs);

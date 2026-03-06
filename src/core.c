@@ -276,6 +276,7 @@ void msh_loop(void) {
   do {
     cleanup_zombies();
 
+    hacker_begin_prompt();
     hacker_prompt();
 
     line = msh_read_line();
